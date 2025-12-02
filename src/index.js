@@ -1,8 +1,51 @@
-import { html } from './html.js';
+import { html, loginHtml } from './html.js';
 
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
+
+        // --- Authentication Check ---
+        if (env.ACCESS_PASSWORD) {
+            // 1. Handle Login POST
+            if (url.pathname === '/login' && request.method === 'POST') {
+                const formData = await request.formData();
+                const password = formData.get('password');
+
+                if (password === env.ACCESS_PASSWORD) {
+                    return new Response(null, {
+                        status: 302,
+                        headers: {
+                            'Location': '/',
+                            'Set-Cookie': `ANCHOR_AUTH=${env.ACCESS_PASSWORD}; HttpOnly; Path=/; Max-Age=31536000; SameSite=Lax`
+                        }
+                    });
+                } else {
+                    // Return login page with error style (simple client-side trick or just re-render)
+                    // We can inject a small script or style to show the error if we want, 
+                    // or just rely on the user trying again.
+                    // Let's inject a style to show the error message div.
+                    const errorHtml = loginHtml.replace('display: none;', 'display: block;');
+                    return new Response(errorHtml, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                }
+            }
+
+            // 2. Validate Cookie for all other requests
+            const cookie = request.headers.get('Cookie') || '';
+            if (!cookie.includes(`ANCHOR_AUTH=${env.ACCESS_PASSWORD}`)) {
+                // If API request, return 401
+                if (url.pathname.startsWith('/api')) {
+                    return new Response('Unauthorized', { status: 401 });
+                }
+                // Otherwise serve Login Page for browser navigation
+                return new Response(loginHtml, {
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
+            }
+        }
+
+        // --- Main Application Logic (Authenticated or No Password Set) ---
 
         // Serve Frontend
         if (url.pathname === '/') {

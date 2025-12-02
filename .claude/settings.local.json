@@ -9,7 +9,9 @@
       "Bash(curl -X POST:*)",
       "Bash(copy:*)",
       "Bash(ln -sf \"D:\\Projects\\Anchor\\src\\html_new.js\" \"D:\\Projects\\Anchor\\src\\html.js\")",
-      "Bash(curl -I http://127.0.0.1:8787/:*)"
+      "Bash(curl -I http://127.0.0.1:8787/:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Bash(curl -i:*)"
     ],
     "deny": [],
     "ask": []
