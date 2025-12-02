@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -X GET:*)",
+      "Bash(cat:*)",
+      "Bash(npx wrangler dev:*)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(curl -i http:*)",
+      "Bash(curl -X POST:*)",
+      "Bash(copy:*)",
+      "Bash(ln -sf \"D:\\Projects\\Anchor\\src\\html_new.js\" \"D:\\Projects\\Anchor\\src\\html.js\")",
+      "Bash(curl -I http://127.0.0.1:8787/:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

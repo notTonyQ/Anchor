@@ -7,7 +7,7 @@ export default {
         // Serve Frontend
         if (url.pathname === '/') {
             return new Response(html, {
-                headers: { 'Content-Type': 'text/html' },
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
         }
 
@@ -16,31 +16,124 @@ export default {
             const { results } = await env.DB.prepare(
                 'SELECT * FROM tasks ORDER BY target_date ASC'
             ).all();
-            return Response.json(results);
+            return new Response(JSON.stringify(results), {
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            });
         }
 
         // API: Create Task
         if (url.pathname === '/api/tasks' && request.method === 'POST') {
             const data = await request.json();
-            const { title, note, target_date, days_advance, urgency } = data;
+            const { title, note, target_date, days_advance, repeat_cycle, urgency } = data;
 
             await env.DB.prepare(
-                'INSERT INTO tasks (title, note, target_date, days_advance, urgency) VALUES (?, ?, ?, ?, ?)'
-            ).bind(title, note, target_date, days_advance || 7, urgency || 'Normal').run();
+                'INSERT INTO tasks (title, note, target_date, days_advance, repeat_cycle, urgency) VALUES (?, ?, ?, ?, ?, ?)'
+            ).bind(title, note, target_date, days_advance || 7, repeat_cycle || 0, urgency || 'Normal').run();
 
-            return new Response('Created', { status: 201 });
+            return new Response('Created', {
+                status: 201,
+                headers: { 'Content-Type': 'application/json; charset=utf-8' }
+            });
         }
 
-        // API: Update Task (Mark Complete)
-        if (url.pathname.startsWith('/api/tasks/') && request.method === 'PATCH') {
+        // API: Delete Task
+        if (url.pathname.startsWith('/api/tasks/') && request.method === 'DELETE') {
             const id = url.pathname.split('/').pop();
-            const { status } = await request.json();
 
             await env.DB.prepare(
-                'UPDATE tasks SET status = ? WHERE id = ?'
-            ).bind(status, id).run();
+                'DELETE FROM tasks WHERE id = ?'
+            ).bind(id).run();
 
-            return new Response('Updated', { status: 200 });
+            return new Response('Deleted', {
+                status: 200,
+                headers: { 'Content-Type': 'application/json; charset=utf-8' }
+            });
+        }
+
+        // API: Update Task (Mark Complete or Edit Content)
+        if (url.pathname.startsWith('/api/tasks/') && request.method === 'PATCH') {
+            const id = url.pathname.split('/').pop();
+            const body = await request.json();
+
+            // Scenario 1: Edit Task Content
+            if (body.title !== undefined) {
+                await env.DB.prepare(
+                    'UPDATE tasks SET title=?, note=?, target_date=?, days_advance=?, repeat_cycle=?, urgency=? WHERE id=?'
+                ).bind(
+                    body.title,
+                    body.note,
+                    body.target_date,
+                    body.days_advance,
+                    body.repeat_cycle,
+                    body.urgency,
+                    id
+                ).run();
+
+                return new Response('Updated Content', {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+                });
+            }
+
+            // Scenario 2: Update Status (Mark Complete)
+            if (body.status !== undefined) {
+                const { status } = body;
+
+                // If marking as Completed and repeat_cycle > 0, create a new task
+                if (status === 'Completed') {
+                    // Get the task details
+                    const { results } = await env.DB.prepare(
+                        'SELECT * FROM tasks WHERE id = ?'
+                    ).bind(id).all();
+
+                    if (results && results.length > 0) {
+                        const task = results[0];
+
+                        // Mark current task as completed
+                        await env.DB.prepare(
+                            'UPDATE tasks SET status = ? WHERE id = ?'
+                        ).bind(status, id).run();
+
+                        // If repeat_cycle > 0, create a new recurring task
+                        if (task.repeat_cycle > 0) {
+                            // Calculate new target date
+                            const newTargetDate = new Date(task.target_date);
+                            newTargetDate.setDate(newTargetDate.getDate() + task.repeat_cycle);
+
+                            // Format date to YYYY-MM-DD
+                            const newTargetDateStr = newTargetDate.toISOString().split('T')[0];
+
+                            // Create new task with same details but new target date
+                            await env.DB.prepare(
+                                'INSERT INTO tasks (title, note, target_date, days_advance, repeat_cycle, urgency, status) VALUES (?, ?, ?, ?, ?, ?, ?)'
+                            ).bind(
+                                task.title,
+                                task.note,
+                                newTargetDateStr,
+                                task.days_advance,
+                                task.repeat_cycle,
+                                task.urgency,
+                                'Active'
+                            ).run();
+                        }
+
+                        return new Response('Updated Status', {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json; charset=utf-8' }
+                        });
+                    }
+                }
+
+                // If not a completion with repeat, just update status normally
+                await env.DB.prepare(
+                    'UPDATE tasks SET status = ? WHERE id = ?'
+                ).bind(status, id).run();
+
+                return new Response('Updated Status', {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+                });
+            }
         }
 
         return new Response('Not Found', { status: 404 });
@@ -112,11 +205,11 @@ async function sendEmail(env, task) {
     }
 
     const html = `
-    <h1>Anchor Reminder: ${task.title}</h1>
-    <p><strong>Target Date:</strong> ${task.target_date}</p>
-    <p><strong>Urgency:</strong> ${task.urgency}</p>
-    <p><strong>Note:</strong> ${task.note || 'None'}</p>
-    <p>Please take action or mark as completed in the app.</p>
+    <h1>锚点提醒：${task.title}</h1>
+    <p><strong>目标日期：</strong>${task.target_date}</p>
+    <p><strong>紧急程度：</strong>${task.urgency}</p>
+    <p><strong>备注：</strong>${task.note || '无'}</p>
+    <p>请在应用中采取行动或标记为已完成。</p>
   `;
 
     try {
@@ -128,8 +221,8 @@ async function sendEmail(env, task) {
             },
             body: JSON.stringify({
                 from: env.SENDER_EMAIL || 'onboarding@resend.dev',
-                to: 'delivered@resend.dev', // Default to testing email, user should change logic to their email if needed
-                subject: `[Anchor] Reminder: ${task.title}`,
+                to: env.RECEIVER_EMAIL || 'delivered@resend.dev', // Default to testing email, user should change logic to their email if needed
+                subject: `[Anchor] 提醒: ${task.title}`,
                 html: html
             })
         });

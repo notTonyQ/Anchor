@@ -6,13 +6,8 @@ compatibility_date = "2024-11-30"
 [[d1_databases]]
 binding = "DB"
 database_name = "anchor-db"
-database_id = "YOUR_DATABASE_ID" # User will need to fill this or I can use a placeholder
+database_id = "a7c90f2e-3aa6-45bb-b5f5-128bfb3c6519" # User will need to fill this or I can use a placeholder
 
-# Cron Trigger (Daily at 9 AM UTC, for example)
+# Cron Trigger (Daily at 9:00 UTC+8 / 17:00 UTC)
 [triggers]
-crons = ["0 9 * * *"]
-
-# Variables (Secrets should be set via `wrangler secret put`)
-[vars]
-RESEND_API_KEY = "re_123456789" # Placeholder, user should override
-SENDER_EMAIL = "onboarding@resend.dev" # Placeholder
+crons = ["0 17 * * *"]

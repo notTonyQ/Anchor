@@ -5,6 +5,7 @@ CREATE TABLE tasks (
   note TEXT,
   target_date TEXT NOT NULL,
   days_advance INTEGER DEFAULT 7,
+  repeat_cycle INTEGER DEFAULT 0,
   urgency TEXT CHECK(urgency IN ('Urgent', 'Normal')) DEFAULT 'Normal',
   status TEXT CHECK(status IN ('Active', 'Completed')) DEFAULT 'Active',
   last_reminded_at TEXT,
