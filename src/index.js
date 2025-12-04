@@ -247,12 +247,76 @@ async function sendEmail(env, task) {
         return;
     }
 
+    // Get urgency style based on web app design
+    const urgencyStyle = task.urgency === 'Urgent'
+        ? `display: inline-block; padding: 4px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.85em; font-weight: 600; border-radius: 4px;`
+        : `display: inline-block; padding: 4px 12px; background: rgba(30, 69, 120, 0.1); color: #1e4578; font-size: 0.85em; font-weight: 600; border-radius: 4px;`;
+
     const html = `
-    <h1>锚点提醒：${task.title}</h1>
-    <p><strong>目标日期：</strong>${task.target_date}</p>
-    <p><strong>紧急程度：</strong>${task.urgency}</p>
-    <p><strong>备注：</strong>${task.note || '无'}</p>
-    <p>请在应用中采取行动或标记为已完成。</p>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>锚点提醒：${task.title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f3f4f6; color: #1f2937; line-height: 1.6;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background: #f3f4f6; padding: 40px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 6px 14px rgba(0,0,0,0.08);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: #1e4578; padding: 32px 32px 28px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">📌 Anchor 提醒</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 32px;">
+                            <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #1f2937; line-height: 1.3;">${task.title}</h2>
+
+                            <div style="margin: 20px 0 24px;">
+                                <span style="${urgencyStyle}">${task.urgency === 'Urgent' ? '⚠️ 紧急' : '📅 普通'}</span>
+                            </div>
+
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+                                <tr>
+                                    <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280; font-size: 14px; font-weight: 500;">目标日期</span>
+                                    </td>
+                                    <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                                        <span style="color: #1e4578; font-weight: 700; font-size: 15px;">${task.target_date}</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            ${task.note ? `
+                            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 3px solid #e5e7eb; margin: 24px 0 0 0;">
+                                <div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">备注</div>
+                                <div style="color: #1f2937; line-height: 1.7; font-size: 15px;">${task.note}</div>
+                            </div>
+                            ` : ''}
+
+                            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+                                请在 Anchor 应用中查看详情或标记为已完成。
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background: #f9fafb; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="color: #9ca3af; font-size: 13px; margin: 0; font-weight: 500;">此邮件由 Anchor 应用自动发送</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
   `;
 
     try {
